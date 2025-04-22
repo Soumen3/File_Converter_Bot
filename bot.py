@@ -1,21 +1,9 @@
 from telegram import Update, File
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, CommandHandler, ContextTypes
 import os
-from flask import Flask, request
 
 TOKEN = os.getenv("BOT_TOKEN")  # Use environment variable for security
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Set this to your Render public URL
 
-app = ApplicationBuilder().token(TOKEN).build()
-
-# Flask app for handling webhooks
-flask_app = Flask(__name__)
-
-@flask_app.route(f"/{TOKEN}", methods=["POST"])
-async def webhook():
-    update = Update.de_json(request.get_json(force=True), app.bot)
-    await app.process_update(update)
-    return "OK", 200
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Send me a file to convert!")
@@ -85,12 +73,13 @@ async def handle_conversion_format(update: Update, context: ContextTypes.DEFAULT
         except FileNotFoundError:
             print(f"File not found for deletion: {path}")
 
-# Add your existing handlers
+app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, handle_file))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_conversion_format))
 
-if __name__ == "__main__":
-    # Set the webhook
-    app.bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+try:
+    print("Bot started...")
+    app.run_polling()
+finally:
+    print("Bot stopped.")
